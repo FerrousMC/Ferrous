@@ -3,6 +3,7 @@ use byteorder::ReadBytesExt;
 use crate::protocol::structs::{Readable, Writeable, VarInt, ProtocolVersion};
 
 mod protocol;
+mod util;
 
 const PROTOCOL: ProtocolVersion = ProtocolVersion::V1_18_2;
 
@@ -43,6 +44,3 @@ fn main() {
     }
 
 }
-
-// [16, 0, 246, 5, 9, 108, 111, 99, 97, 108, 104, 111, 115, 116, 99, 221, 2,
-// [16, 0, 246, 5, 9, 108, 111, 99, 97, 108, 104, 111, 115, 116, 99, 221, 2, 7, 0, 5, 115, 48, 118, 105, 95, 0]
