@@ -1,5 +1,10 @@
-use std::{net::TcpListener, io::Read};
+use std::{net::{TcpListener}, io::{Read, Cursor}, result::{Result}};
+use byteorder::ReadBytesExt;
+use crate::protocol::structs::{Readable, Writeable, VarInt, ProtocolVersion};
 
+mod protocol;
+
+const PROTOCOL: ProtocolVersion = ProtocolVersion::V1_18_2;
 
 struct Config {
     port: u16,
@@ -14,49 +19,30 @@ fn main() {
     };
 
     //define our tcp listener here
-    let tcp: TcpListener;
-    //assign it a value here. This keeps it way more concise.
-    if let Ok(result) = TcpListener::bind(format!("127.0.0.1:{}", config.port)) {
-        tcp = result;
-        println!("Server bound to \"127.0.0.1:{}\"", config.port);
-    } else {
-        println!("Unable to bind to port {}, is another server already bound to it?", config.port);
-        return
-    }
 
+    let addr = "127.0.0.1:25565";
+    let tcp: TcpListener = TcpListener::bind(addr).expect(&format!("Couldn't bind to address \"{}\"! Is another process bound to it?", &addr));
     for result in tcp.incoming() {
         if let Ok(mut connection) = result {
-            let mut buf = [0; 128];
-            
+            let mut buf = [0; 256];
             connection.read(&mut buf).unwrap();
+            let mut cursor: Cursor<&[u8]> = Cursor::new(&buf);
 
-            let mut size: u8 = 0;
-            let mut int_vec: [u8; 4]  = [0; 4];
-            
-            for (i, byte) in buf.iter().enumerate() {
-                // match i {
-                //     0 => size = buf[i],
-                //     1..5 => int_vec[i] = byte.clone(),
-                //     _ => {}
-                // }
-                if i == 0 {
-                    size = byte.clone()
-                } else if i >= 1 && i<5 {
-                    int_vec[i-1] = byte.clone()
-                }
-            }
+            let version: i32 = VarInt::read(&mut cursor, PROTOCOL).unwrap().0;
+            let address: String = String::read(&mut cursor, PROTOCOL).unwrap();
+            let port: u8 = u8::read(&mut cursor, PROTOCOL).unwrap();
+            let next_state: i32 = VarInt::read(&mut cursor, PROTOCOL).unwrap().0;
 
-            println!("Whole buf: {buf:?}");
-            println!("Useful size: {size}" );
-            println!("Protocol version: {}", as_u32(&int_vec));
+            println!("Version: {}", version);
+            println!("Address: {}", address);
+            println!("Port: {}", port);
+            println!("Next state: {} => {}", next_state, if next_state == 1 {"1"} else if next_state == 2 {"2"} else {"?"});
+        } else {
+            println!("Recieved a bad connection!")
         }
     }
 
 }
 
-fn as_u32(array: &[u8; 4]) -> u32 {
-    ((array[0] as u32) << 0) + 
-    ((array[1] as u32) << 8) + 
-    ((array[2] as u32) << 16) + 
-    ((array[3] as u32) << 24) 
-}
+// [16, 0, 246, 5, 9, 108, 111, 99, 97, 108, 104, 111, 115, 116, 99, 221, 2,
+// [16, 0, 246, 5, 9, 108, 111, 99, 97, 108, 104, 111, 115, 116, 99, 221, 2, 7, 0, 5, 115, 48, 118, 105, 95, 0]
