@@ -1,28 +1,19 @@
 
 // use crate::{ProtocolVersion, Slot};
-use anyhow::{anyhow, bail, Context, Ok};
+use anyhow::{bail, Context, Ok};
 // use base::{
 //     anvil::entity::ItemNbt, metadata::MetaEntry, BlockId, BlockPosition, Direction, EntityMetadata,
 //     Gamemode, Item, ItemStackBuilder, ValidBlockPosition,
 // };
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-// use libcraft_items::InventorySlot::*;
-use num_traits::{FromPrimitive, ToPrimitive};
-// use quill_common::components::PreviousGamemode;
-use serde::{de::DeserializeOwned, Serialize};
-use std::char::MAX;
-use std::io::ErrorKind;
 use std::{
     borrow::Cow,
-    collections::BTreeMap,
     convert::{TryFrom, TryInto},
-    io::{self, Cursor, Read, Write},
+    io::{self, Cursor, Read, Write, ErrorKind},
     iter,
     marker::PhantomData,
-    num::TryFromIntError,
 };
 use thiserror::Error;
-use uuid::Uuid;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ProtocolVersion {
@@ -238,7 +229,7 @@ impl VarInt {
 }
 
 impl Readable for VarInt {
-    fn read(buffer: &mut Cursor<&[u8]>, version: ProtocolVersion) -> anyhow::Result<Self>
+    fn read(buffer: &mut Cursor<&[u8]>, _version: ProtocolVersion) -> anyhow::Result<Self>
     where
         Self: Sized 
     {
@@ -247,7 +238,7 @@ impl Readable for VarInt {
 }
 
 impl Writeable for VarInt {
-    fn write(&self, buffer: &mut Vec<u8>, version: ProtocolVersion) -> anyhow::Result<()> {
+    fn write(&self, buffer: &mut Vec<u8>, _version: ProtocolVersion) -> anyhow::Result<()> {
         self.write_to(buffer).expect("write to Vec failed");
         Ok(())
     }
@@ -345,8 +336,28 @@ impl Readable for String {
             .read_exact(&mut temp)
             .map_err(|_| Error::UnexpectedEof("String"))?;
 
-            let s = std::str::from_utf8(&temp).context("String contained invalid UTF8")?;
-            Ok(s.to_owned())
+        let s = std::str::from_utf8(&temp).context("String contained invalid UTF8")?;
+        Ok(s.to_owned())
+    }
+}
+
+impl Writeable for String {
+    fn write(&self, buffer: &mut Vec<u8>, version: ProtocolVersion) -> anyhow::Result<()> {
+        let length: VarInt = VarInt(self.len() as i32);
+
+        let max_length: usize = std::i16::MAX as usize;
+        if length.0 as usize > max_length {
+            bail!(
+                "string length {} exceeds maximum allowed length of {}",
+                length.0,
+                max_length
+            )
+        }
+        length.write(buffer, version).context("VarInt format invalid!")?;
+
+        buffer.write(self.as_bytes()).context("Unable to access string!")?;
+        
+        Ok(())
     }
 }
 
@@ -427,6 +438,7 @@ where
     }
 }
 
+//Will be used eventually, rust is just throwing a fit
 pub type VarIntPrefixedVec<'a, T> = LengthPrefixedVec<'a, VarInt, T>;
 pub type ShortPrefixedVec<'a, T> = LengthPrefixedVec<'a, u16, T>;
 
@@ -460,5 +472,4 @@ impl<'a> From<GreedyVecU8<'a>> for Vec<u8> {
     fn from(x: GreedyVecU8<'a>) -> Self {
         x.0.into_owned()
     }
-    
 }
