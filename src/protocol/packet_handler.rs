@@ -17,6 +17,8 @@ pub type Cfb8Dec = cfb8::Decryptor<Aes128>;
 
 pub const PROTOCOL: ProtocolVersion = ProtocolVersion::V1_18_2;
 
+//NOTE: A lot of this will be flagged by the compiler as "unused" since the netty thread isn't implemeneted yet.
+
 pub struct EncryptionHandler {
     key: EncryptionKey,
     encryptor: Cfb8Enc,
