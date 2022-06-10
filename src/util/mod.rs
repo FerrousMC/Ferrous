@@ -1,6 +1,8 @@
 use std::convert::TryFrom;
 use crate::protocol::{structs::{Readable, ProtocolVersion, Writeable}};
 
+pub mod log;
+
 /// An angle written so that 1.0 = 1/256th of a turn
 pub struct Angle(pub f32);
 
