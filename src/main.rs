@@ -4,6 +4,7 @@ use byteorder::ReadBytesExt;
 use crate::protocol::structs::{Readable, Writeable, VarInt, ProtocolVersion};
 
 mod protocol;
+mod world;
 mod util;
 
 const PROTOCOL: ProtocolVersion = ProtocolVersion::V1_18_2;
