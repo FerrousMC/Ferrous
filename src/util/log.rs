@@ -70,7 +70,8 @@ pub fn fatal_net(message: &str) {
 
 pub enum ThreadName {
     Main,
-    Network
+    Network,
+    Chunk
 }
 
 impl Display for ThreadName {
@@ -78,6 +79,7 @@ impl Display for ThreadName {
         let string = match self {
             ThreadName::Main => "[Main]",
             ThreadName::Network => "[Network]",
+            ThreadName::Chunk => "[Chunk]",
         };
 
         write!(f, "{}", &string)
